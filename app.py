@@ -39,6 +39,10 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
 
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'message': 'Welcome to DailyPe Assignment!'}), 201
+
 @app.route('/api/create_user', methods=['POST'])
 def create_user():
     data = request.get_json()
