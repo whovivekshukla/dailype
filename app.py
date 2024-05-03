@@ -43,7 +43,7 @@ with app.app_context():
 def home():
     return jsonify({'message': 'Welcome to DailyPe Assignment!'}), 201
 
-@app.route('/api/create_user', methods=['POST'])
+@app.route('/create_user', methods=['POST'])
 def create_user():
     data = request.get_json()
 
@@ -90,7 +90,7 @@ def create_user():
     return jsonify({'message': 'User created successfully'}), 201
 
 
-@app.route('/api/get_users', methods=['POST'])
+@app.route('/get_users', methods=['POST'])
 def get_users():
     data = request.get_json()
     user_id = data.get('user_id')
@@ -130,7 +130,7 @@ def get_users():
     return jsonify(user_list), 200
 
 
-@app.route('/api/delete_user', methods=['POST'])
+@app.route('/delete_user', methods=['POST'])
 def delete_user():
     data = request.get_json()
     user_id = data.get('user_id')
@@ -152,7 +152,7 @@ def delete_user():
 
     return jsonify({'message': 'User deleted successfully'}), 200
 
-@app.route('/api/update_user', methods=['POST'])
+@app.route('/update_user', methods=['POST'])
 def update_user():
     data = request.get_json()
     user_ids = data.get('user_ids')
@@ -207,7 +207,7 @@ def update_user():
     db.session.commit()
     return jsonify({'message': 'Users updated successfully'}), 200
 
-@app.route('/api/create_manager', methods=['POST'])
+@app.route('/create_manager', methods=['POST'])
 def create_manager():
     data = request.get_json()
 
@@ -243,7 +243,7 @@ def create_manager():
     }), 201
 
 
-@app.route('/api/get_managers', methods=['POST'])
+@app.route('/get_managers', methods=['POST'])
 def get_managers():
     managers = Manager.query.filter_by(is_active=True).all()
 
@@ -263,7 +263,7 @@ def get_managers():
     return jsonify( manager_list), 200
 
 
-@app.route('/api/wipe_database', methods=['POST'])
+@app.route('/wipe_database', methods=['POST'])
 def wipe_database():
     # Add additional security checks or authentication mechanisms here
     with app.app_context():
@@ -272,7 +272,7 @@ def wipe_database():
     return jsonify({'message': 'Database wiped and recreated successfully'}), 200
 
 
-@app.route('/api/get_inactive_users', methods=['GET'])
+@app.route('/get_inactive_users', methods=['GET'])
 def get_inactive_users():
     inactive_users = User.query.filter_by(is_active=False).all()
 
