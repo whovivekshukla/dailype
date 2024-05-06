@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import re, os, datetime, uuid
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import aliased
 
 db_username = os.environ.get('DB_USERNAME')
 db_password = os.environ.get('DB_PASSWORD')
@@ -32,6 +34,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    users = db.Column(ARRAY(db.UUID(as_uuid=True)), default=[])
 
     def __repr__(self):
         return f'<User {self.full_name}>'
@@ -46,6 +49,7 @@ def home():
 @app.route('/create_user', methods=['POST'])
 def create_user():
     data = request.get_json()
+    users = [uuid.UUID(user_id) for user_id in data.get('users', [])]
 
     # Validations
     if not data.get('full_name'):
@@ -78,7 +82,8 @@ def create_user():
     new_user = User(
         full_name=data['full_name'],
         mob_num=re.sub(r'^(\+91|0)', '', mob_num),
-        pan_num=pan_num
+        pan_num=pan_num,
+        users=users
     )
 
     if manager_id:
@@ -121,6 +126,8 @@ def get_users():
             'full_name': user.full_name,
             'mob_num': user.mob_num,
             'pan_num': user.pan_num,
+            'users': [str(uuid) for uuid in user.users], 
+            'users': user.users,
             'created_at': user.created_at.isoformat(),
             'updated_at': user.updated_at.isoformat() if user.updated_at else None,
             'is_active': user.is_active
@@ -203,6 +210,10 @@ def update_user():
             else:
                 user.manager_id = manager_id
                 user.updated_at = datetime.datetime.utcnow()
+
+        if 'users' in update_data:
+            user.users = [uuid.UUID(user_id) for user_id in update_data['users']]
+            user.updated_at = datetime.now(datetime.UTC)
 
     db.session.commit()
     return jsonify({'message': 'Users updated successfully'}), 200
@@ -293,8 +304,45 @@ def get_inactive_users():
         }
         user_list.append(user_data)
 
-    return jsonify({'users': user_list}), 200
+    return jsonify({'users': user_list}), 200    
 
+@app.route('/get_users_from_user', methods=['POST'])
+def get_users_from_user():
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'message': 'user_id is required'}), 400
+
+    try:
+        user_id = uuid.UUID(user_id)
+    except ValueError:
+        return jsonify({'message': 'Invalid user_id format'}), 400
+
+    user = User.query.filter_by(id=user_id, is_active=True).first()
+
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    user_ids = user.users
+    associated_users = User.query.filter(User.id.in_(user_ids), User.is_active == True).all()
+
+    user_list = []
+    for associated_user in associated_users:
+        user_data = {
+            'user_id': str(associated_user.id),
+            'manager_id': str(associated_user.manager_id) if associated_user.manager_id else None,
+            'full_name': associated_user.full_name,
+            'mob_num': associated_user.mob_num,
+            'pan_num': associated_user.pan_num,
+            'users': [str(uuid) for uuid in associated_user.users],
+            'created_at': associated_user.created_at.isoformat(),
+            'updated_at': associated_user.updated_at.isoformat() if associated_user.updated_at else None,
+            'is_active': associated_user.is_active
+        }
+        user_list.append(user_data)
+
+    return jsonify(user_list), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
